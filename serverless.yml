@@ -1,0 +1,87 @@
+service:
+  name: translate-me
+
+# Create an optimized package for our functions
+package:
+  individually: true
+
+resources:
+  # DynamoDB tables
+  - ${file(resources/users-dynamo-table.yaml)}
+  - ${file(resources/email-dynamo-table.yaml)}
+
+custom:
+  customDomain:
+    domainName: ${env:DOMAIN_NAME}
+    basePath: ''
+    stage: ${opt:stage, self:provider.stage}
+    createRoute53Record: true
+  prune:
+    automatic: true
+    includeLayers: true
+    number: 3
+  stage: ${opt:stage, self:provider.stage}
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+
+# Add the serverless-webpack plugin
+plugins:
+  - serverless-webpack
+  - serverless-offline
+  - serverless-dotenv-plugin
+  - serverless-prune-plugin
+  - serverless-domain-manager
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: eu-west-2
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { 'Fn::GetAtt': ['UsersTable', 'Arn'] }
+        - { 'Fn::GetAtt': ['EmailsTable', 'Arn'] }
+  apiGateway:
+    minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+
+functions:
+  translate-me:
+    handler: ./functions/telegramTranslateMe.main
+    events:
+      - http:
+          path: /translate-me
+          method: post
+          cors: true
+  pay-for-translates: 
+    handler: ./functions/payment.main
+    events:
+      - http:
+          path: /pay-it
+          method: post
+          cors: true
+  stripe-web-hook:
+    handler: ./functions/stripeWebHook.main
+    events:
+      - http:
+          path: /stripe/web-hook
+          method: post
+          cors: true
+  save-email:
+    handler: ./functions/saveEmail.main
+    events:
+      - http:
+          path: /save-email
+          method: post
+          cors: true

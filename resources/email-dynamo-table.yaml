@@ -1,0 +1,17 @@
+Resources:
+  EmailsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${env:EMAILS_TABLE}
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: N
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+      # Set the capacity to auto-scale
+      BillingMode: PAY_PER_REQUEST

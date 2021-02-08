@@ -1,0 +1,43 @@
+  
+name: deploy-translate-bot
+on:
+  push:
+    branches:
+      - master
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
+    steps:
+      - uses: actions/checkout@master
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install Dependencies
+        run: npm install
+      - name: Install serverless
+        run: npm i -g serverless@1.67.3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+      - name: Setup
+        run: ENV=prod npm run setup
+      - name: Add secrets to env
+        env:
+          PROD_BOT_TOKEN: ${{ secrets.PROD_BOT_TOKEN }}
+          PROD_GOOGLE_TOKEN: ${{ secrets.DEV_GOOGLE_TOKEN }}
+          PROD_STRIPE_SECRET: ${{ secrets.DEV_STRIPE_SECRET }}
+          PROD_STRIPE_WHSEC: ${{ secrets.DEV_STRIPE_WHSEC }}
+        run: npm run add-secrets-values-to-env
+      - name: Deploy custome domain alis for API GW
+        run: npm run create-domain-prod
+      - name: Serverless Deploy
+        run: npm run deploy-prod
+      - name: Setup Telegram WebHook
+        run: npm run setup-telegram-web-hook
